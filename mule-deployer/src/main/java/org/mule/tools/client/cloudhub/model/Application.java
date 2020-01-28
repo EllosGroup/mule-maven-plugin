@@ -24,6 +24,7 @@ public class Application {
   private String description;
   private Map<String, String> properties;
   // private propertiesOptions <-- dafuck
+  private String deploymentUpdateStatus;
   private String status;
   private Long lastUpdateTime;
   private String filename;
@@ -40,6 +41,7 @@ public class Application {
   private Boolean hasFile;
   private Boolean secureDataGatewayEnabled;
   private Boolean vpnEnabled;
+  private Boolean objectStoreV1;
   private Map<String, String> trackingSettings;
   private MuleVersion muleVersion;
   private MuleVersion previousMuleVersion;
@@ -47,11 +49,19 @@ public class Application {
 
   private String region;
   private Workers workers;
-  private List<String> logLevels;
-  private List<String> ipAddresses;
+  private List<LogLevelInfo> logLevels;
+  private List<IpAddress> ipAddresses;
 
   // TODO a class VpnConfig
   private Map<String, String> vpnConfig;
+
+  public void setDeploymentUpdateStatus(String deploymentUpdateStatus) {
+    this.deploymentUpdateStatus = deploymentUpdateStatus;
+  }
+
+  public String getDeploymentUpdateStatus() {
+    return deploymentUpdateStatus;
+  }
 
   public String getId() {
     return id;
@@ -141,19 +151,19 @@ public class Application {
     this.userName = userName;
   }
 
-  public List<String> getIpAddresses() {
+  public List<IpAddress> getIpAddresses() {
     return ipAddresses;
   }
 
-  public void setIpAddresses(List<String> ipAddresses) {
+  public void setIpAddresses(List<IpAddress> ipAddresses) {
     this.ipAddresses = ipAddresses;
   }
 
-  public List<String> getLogLevels() {
+  public List<LogLevelInfo> getLogLevels() {
     return logLevels;
   }
 
-  public void setLogLevels(List<String> logLevels) {
+  public void setLogLevels(List<LogLevelInfo> logLevels) {
     this.logLevels = logLevels;
   }
 
@@ -291,5 +301,13 @@ public class Application {
 
   public void setRegion(String region) {
     this.region = region;
+  }
+
+  public Boolean getObjectStoreV1() {
+    return objectStoreV1;
+  }
+
+  public void setObjectStoreV1(Boolean objectStoreV1) {
+    this.objectStoreV1 = objectStoreV1;
   }
 }

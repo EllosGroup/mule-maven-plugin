@@ -32,16 +32,8 @@ public class CloudHubDeploymentTest {
     System.setProperty("cloudhub.workers", cloudHubWorkers);
     deploymentSpy.setEnvironmentSpecificValues();
     assertThat("The cloudhub workers was not resolved by system property",
-               deploymentSpy.getWorkers().get(), equalTo(Integer.valueOf(cloudHubWorkers)));
+               deploymentSpy.getWorkers(), equalTo(Integer.valueOf(cloudHubWorkers)));
     System.clearProperty("cloudhub.workers");
-  }
-
-  @Test
-  public void setCloudHubDeploymentDefaultValuesCloudHubWorkersNotSetTest() throws DeploymentException {
-    String cloudHubWorkersDefaultValue = "1";
-    deploymentSpy.setEnvironmentSpecificValues();
-    assertThat("The cloudhub workers property was not resolved to the default value",
-               deploymentSpy.getWorkers().get(), equalTo(Integer.valueOf(cloudHubWorkersDefaultValue)));
   }
 
   @Test
@@ -55,10 +47,20 @@ public class CloudHubDeploymentTest {
   }
 
   @Test
-  public void setCloudHubDeploymentDefaultValuesCloudHubWorkerTypeNotSetTest() throws DeploymentException {
-    String cloudHubWorkerTypeDefaultValue = "Micro";
-    deploymentSpy.setEnvironmentSpecificValues();
-    assertThat("The cloudhub worker type property was not resolved to the default value",
-               deploymentSpy.getWorkerType(), equalTo(cloudHubWorkerTypeDefaultValue));
+  public void defaultOsV2ValueIsFalse() {
+    assertThat("The default value for Object Store v2 property is not false",
+               deploymentSpy.getObjectStoreV2(), equalTo(false));
+  }
+
+  @Test
+  public void defaultPersistentQueuesValueIsFalse() {
+    assertThat("The default value for Persistent Queues property is not false",
+               deploymentSpy.getPersistentQueues(), equalTo(false));
+  }
+
+  @Test
+  public void defaultWaitBeforeValidationIsZero() {
+    assertThat("The default value for pepe is not zero",
+               deploymentSpy.getWaitBeforeValidation(), equalTo(6000));
   }
 }

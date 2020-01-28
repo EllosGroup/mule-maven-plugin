@@ -11,7 +11,12 @@
             "version": "3.0.0",
             "type": "jar"
           },
-          "uri": "repository/group/id/x/artifact-id-x/3.0.0/artifact-id-x-3.0.0.jar"
+          "uri": "repository/group/id/x/artifact-id-x/3.0.0/artifact-id-x-3.0.0.jar",
+          "resources": [
+            "META-INF/MANIFEST.MF",
+            "META-INF/maven/group.id.x/artifact-id-x/pom.properties",
+            "META-INF/maven/group.id.x/artifact-id-x/pom.xml"
+          ]
         },
         {
           "artifactCoordinates": {
@@ -20,12 +25,17 @@
             "version": "1.0.0",
             "type": "jar"
           },
-          "uri": "repository/group/id/z/artifact-id-z/1.0.0/artifact-id-z-1.0.0.jar"
+          "uri": "repository/group/id/z/artifact-id-z/1.0.0/artifact-id-z-1.0.0.jar",
+          "resources": [
+            "META-INF/MANIFEST.MF",
+            "META-INF/maven/group.id.z/artifact-id-z/pom.properties",
+            "META-INF/maven/group.id.z/artifact-id-z/pom.xml"
+          ]
         }
       ]
     }
   ],
-  "version": "1.1.0",
+  "version": "1.2.0",
   "artifactCoordinates": {
     "groupId": "org.apache.maven.plugin.my.unit",
     "artifactId": "mule-app-plugin-with-reusable-app",

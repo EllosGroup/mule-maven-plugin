@@ -10,26 +10,9 @@
 
 package org.mule.tools.api.classloader.model.util;
 
-import org.mule.maven.client.api.model.BundleDependency;
-import org.mule.maven.client.api.model.BundleDescriptor;
-import org.mule.tools.api.classloader.Constants;
-import org.mule.tools.api.classloader.model.Artifact;
-import org.mule.tools.api.classloader.model.ArtifactCoordinates;
-
-import org.apache.commons.lang3.StringUtils;
-import org.apache.maven.model.Build;
-import org.apache.maven.model.Dependency;
-import org.apache.maven.model.Model;
-import org.apache.maven.model.Plugin;
-import org.codehaus.plexus.util.xml.Xpp3Dom;
-
-import java.net.URI;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
 import static java.lang.String.format;
+import static java.util.stream.Collectors.toList;
+import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.mule.maven.client.internal.AetherMavenClient.MULE_PLUGIN_CLASSIFIER;
 import static org.mule.runtime.api.util.Preconditions.checkState;
@@ -40,6 +23,28 @@ import static org.mule.tools.api.classloader.Constants.MULE_MAVEN_PLUGIN_GROUP_I
 import static org.mule.tools.api.classloader.Constants.SHARED_LIBRARIES_FIELD;
 import static org.mule.tools.api.classloader.Constants.SHARED_LIBRARY_FIELD;
 import static org.mule.tools.api.packager.packaging.Classifier.MULE_DOMAIN;
+import static org.mule.tools.api.packager.packaging.Classifier.MULE_PLUGIN;
+
+import org.mule.maven.client.api.model.BundleDependency;
+import org.mule.maven.client.api.model.BundleDescriptor;
+import org.mule.tools.api.classloader.model.ApplicationGAVModel;
+import org.mule.tools.api.classloader.model.Artifact;
+import org.mule.tools.api.classloader.model.ArtifactCoordinates;
+import org.mule.tools.api.util.FileJarExplorer;
+import org.mule.tools.api.util.JarInfo;
+
+import java.io.File;
+import java.net.URI;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.maven.model.Build;
+import org.apache.maven.model.Dependency;
+import org.apache.maven.model.Model;
+import org.apache.maven.model.Plugin;
+import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 /**
  * ArtifactUtils presents helper methods to convert artifact related classes and recognize mule plugin artifacts.
@@ -83,7 +88,7 @@ public class ArtifactUtils {
    * @return the corresponding artifact list, each one with normalized version.
    */
   public static List<Artifact> toArtifacts(Collection<BundleDependency> dependencies) {
-    return dependencies.stream().map(ArtifactUtils::toArtifact).collect(Collectors.toList());
+    return dependencies.stream().map(ArtifactUtils::toArtifact).collect(toList());
   }
 
   /**
@@ -134,6 +139,23 @@ public class ArtifactUtils {
     List<Artifact> dependencies = toArtifacts(appDependencies);
     dependencies.forEach(ArtifactUtils::updateScopeIfDomain);
     return dependencies;
+  }
+
+  public static List<Artifact> updatePackagesResources(List<Artifact> artifacts) {
+    return artifacts.stream().map(artifact -> updatePackagesResources(artifact)).collect(toList());
+  }
+
+  public static Artifact updatePackagesResources(Artifact artifact) {
+    if (MULE_PLUGIN.equals(artifact.getArtifactCoordinates().getClassifier())
+        || artifact.getUri() == null
+        // mule-domain are set with a "" URI
+        || isBlank(artifact.getUri().getPath())) {
+      return artifact;
+    }
+    JarInfo jarInfo = new FileJarExplorer().explore(artifact.getUri());
+    artifact.setPackages(jarInfo.getPackages().toArray(new String[jarInfo.getPackages().size()]));
+    artifact.setResources(jarInfo.getResources().toArray(new String[jarInfo.getResources().size()]));
+    return artifact;
   }
 
   public static List<Artifact> updateArtifactsSharedState(List<BundleDependency> appDependencies, List<Artifact> artifacts,
@@ -219,26 +241,24 @@ public class ArtifactUtils {
     }
   }
 
-  public static ArtifactCoordinates getApplicationArtifactCoordinates(Model pomModel) {
-    ArtifactCoordinates appCoordinates = toArtifactCoordinates(getPomProjectBundleDescriptor(pomModel));
+  public static ArtifactCoordinates getApplicationArtifactCoordinates(Model pomModel, ApplicationGAVModel appGAVModel) {
+    ArtifactCoordinates appCoordinates = toArtifactCoordinates(getPomProjectBundleDescriptor(appGAVModel));
     appCoordinates.setType(PACKAGE_TYPE);
     appCoordinates.setClassifier(pomModel.getPackaging());
     return appCoordinates;
   }
 
-  public static BundleDescriptor getPomProjectBundleDescriptor(Model pomModel) {
-    return getBundleDescriptor(pomModel);
+  public static BundleDescriptor getPomProjectBundleDescriptor(ApplicationGAVModel appGAVModel) {
+    return getBundleDescriptor(appGAVModel);
   }
 
 
-  public static BundleDescriptor getBundleDescriptor(Model pomModel) {
-    final String version =
-        StringUtils.isNotBlank(pomModel.getVersion()) ? pomModel.getVersion() : pomModel.getParent().getVersion();
+  public static BundleDescriptor getBundleDescriptor(ApplicationGAVModel appGAVModel) {
     return new BundleDescriptor.Builder()
-        .setGroupId(StringUtils.isNotBlank(pomModel.getGroupId()) ? pomModel.getGroupId() : pomModel.getParent().getGroupId())
-        .setArtifactId(pomModel.getArtifactId())
-        .setVersion(version)
-        .setBaseVersion(version)
+        .setGroupId(appGAVModel.getGroupId())
+        .setArtifactId(appGAVModel.getArtifactId())
+        .setVersion(appGAVModel.getVersion())
+        .setBaseVersion(appGAVModel.getVersion())
         .setType(POM_TYPE)
         .build();
   }

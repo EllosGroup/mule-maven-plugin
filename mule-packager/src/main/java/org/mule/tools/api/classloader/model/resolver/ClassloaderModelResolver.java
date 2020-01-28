@@ -13,6 +13,9 @@ import org.mule.maven.client.api.model.BundleDependency;
 import org.mule.maven.client.internal.AetherMavenClient;
 import org.mule.tools.api.classloader.model.Artifact;
 import org.mule.tools.api.classloader.model.ClassLoaderModel;
+import org.mule.tools.api.util.FileJarExplorer;
+import org.mule.tools.api.util.JarExplorer;
+import org.mule.tools.api.util.JarInfo;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -24,12 +27,15 @@ import java.util.stream.Collectors;
 import static org.mule.tools.api.classloader.model.ApplicationClassLoaderModelAssembler.CLASS_LOADER_MODEL_VERSION;
 import static org.mule.tools.api.classloader.model.util.ArtifactUtils.toArtifactCoordinates;
 import static org.mule.tools.api.classloader.model.util.ArtifactUtils.toArtifacts;
+import static org.mule.tools.api.classloader.model.util.ArtifactUtils.updatePackagesResources;
 
 public abstract class ClassloaderModelResolver {
 
   protected final AetherMavenClient muleMavenPluginClient;
   private final String classifier;
   protected Map<BundleDependency, List<BundleDependency>> dependenciesMap;
+
+  private JarExplorer jarExplorer = new FileJarExplorer();
 
   public ClassloaderModelResolver(AetherMavenClient muleMavenPluginClient,
                                   String classifier) {
@@ -52,9 +58,14 @@ public abstract class ClassloaderModelResolver {
     for (Map.Entry<BundleDependency, List<BundleDependency>> dependencyListEntry : dependenciesMap.entrySet()) {
       ClassLoaderModel dependencyClassloaderModel =
           new ClassLoaderModel(CLASS_LOADER_MODEL_VERSION, toArtifactCoordinates(dependencyListEntry.getKey().getDescriptor()));
+
+      JarInfo jarInfo = jarExplorer.explore(dependencyListEntry.getKey().getBundleUri());
+      dependencyClassloaderModel.setPackages(jarInfo.getPackages().toArray(new String[jarInfo.getPackages().size()]));
+      dependencyClassloaderModel.setResources(jarInfo.getResources().toArray(new String[jarInfo.getResources().size()]));
+
       List<BundleDependency> dependencyDependencies =
           resolveConflicts(dependencyListEntry.getValue(), dependencies);
-      dependencyClassloaderModel.setDependencies(toArtifacts(dependencyDependencies));
+      dependencyClassloaderModel.setDependencies(updatePackagesResources(toArtifacts(dependencyDependencies)));
       classloaderModels.add(dependencyClassloaderModel);
     }
     return classloaderModels;

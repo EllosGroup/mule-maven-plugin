@@ -9,7 +9,6 @@
  */
 package org.mule.tools.verification.cloudhub;
 
-import org.apache.commons.lang3.StringUtils;
 import org.mule.tools.client.cloudhub.model.Application;
 import org.mule.tools.client.cloudhub.CloudHubClient;
 import org.mule.tools.client.core.exception.DeploymentException;
@@ -21,6 +20,9 @@ import org.mule.tools.verification.DeploymentVerificationStrategy;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import static org.apache.commons.lang3.StringUtils.containsIgnoreCase;
+import static org.apache.commons.lang3.StringUtils.equalsIgnoreCase;
+
 public class CloudHubDeploymentVerification implements DeploymentVerification {
 
   private final CloudHubClient client;
@@ -28,6 +30,7 @@ public class CloudHubDeploymentVerification implements DeploymentVerification {
 
   private static final String FAILED_STATUS = "FAIL";
   public static final String STARTED_STATUS = "STARTED";
+  static final String DEPLOYMENT_IN_PROGRESS = "DEPLOYING";
 
   public CloudHubDeploymentVerification(CloudHubClient client) {
     this.client = client;
@@ -46,11 +49,13 @@ public class CloudHubDeploymentVerification implements DeploymentVerification {
       return (deployment) -> {
         Application application = client.getApplications(deployment.getApplicationName());
         if (application != null) {
-          if (StringUtils.containsIgnoreCase(application.getStatus(), FAILED_STATUS)) {
+          if (equalsIgnoreCase(application.getDeploymentUpdateStatus(), DEPLOYMENT_IN_PROGRESS)) {
+            return false;
+          } else if (containsIgnoreCase(application.getStatus(), FAILED_STATUS)
+              || containsIgnoreCase(application.getDeploymentUpdateStatus(), FAILED_STATUS)) {
             throw new IllegalStateException("Deployment failed");
-          } else if (StringUtils.equals(STARTED_STATUS, application.getStatus())) {
-            return true;
           }
+          return equalsIgnoreCase(STARTED_STATUS, application.getStatus());
         }
         return false;
       };

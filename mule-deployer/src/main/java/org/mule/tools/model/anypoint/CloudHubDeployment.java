@@ -13,12 +13,7 @@ package org.mule.tools.model.anypoint;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.mule.tools.client.core.exception.DeploymentException;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-
 import static java.lang.System.getProperty;
-import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 public class CloudHubDeployment extends AnypointDeployment {
@@ -33,10 +28,16 @@ public class CloudHubDeployment extends AnypointDeployment {
   protected String region;
 
   @Parameter
-  protected Map<String, String> properties;
+  protected Boolean overrideProperties;
 
   @Parameter
-  protected Boolean overrideProperties;
+  protected Boolean objectStoreV2 = false;
+
+  @Parameter
+  protected Boolean persistentQueues = false;
+
+  @Parameter
+  protected Integer waitBeforeValidation = 6000;
 
   /**
    * Region to deploy the application in Cloudhub.
@@ -56,8 +57,8 @@ public class CloudHubDeployment extends AnypointDeployment {
    *
    * @since 2.0
    */
-  public Optional<Integer> getWorkers() {
-    return Optional.ofNullable(workers);
+  public Integer getWorkers() {
+    return workers;
   }
 
   public void setWorkers(Integer workers) {
@@ -78,17 +79,37 @@ public class CloudHubDeployment extends AnypointDeployment {
   }
 
   /**
-   * CloudHub properties.
+   * Define object store version of the application in Cloudhub.
    *
-   * @since 2.0
-   *
+   * @since 3.3.3
    */
-  public Map<String, String> getProperties() {
-    return properties;
+  public Boolean getObjectStoreV2() {
+    return objectStoreV2;
   }
 
-  public void setProperties(Map<String, String> properties) {
-    this.properties = properties;
+  public void setObjectStoreV2(Boolean objectStoreV2) {
+    this.objectStoreV2 = objectStoreV2;
+  }
+
+  /**
+   * Define object store version of the application in Cloudhub.
+   *
+   * @since 3.3.3
+   */
+  public Boolean getPersistentQueues() {
+    return persistentQueues;
+  }
+
+  public void setPersistentQueues(Boolean persistentQueues) {
+    this.persistentQueues = persistentQueues;
+  }
+
+  public Integer getWaitBeforeValidation() {
+    return waitBeforeValidation;
+  }
+
+  public void setWaitBeforeValidation(Integer time) {
+    this.waitBeforeValidation = time;
   }
 
   public void setEnvironmentSpecificValues() throws DeploymentException {
@@ -98,18 +119,11 @@ public class CloudHubDeployment extends AnypointDeployment {
     if (isNotBlank(cloudHubWorkers)) {
       setWorkers(Integer.valueOf(cloudHubWorkers));
     }
-    if (!getWorkers().isPresent()) {
-      setWorkers(Integer.valueOf("1"));
-    }
 
     String cloudHubWorkerType = getProperty("cloudhub.workerType");
     if (isNotBlank(cloudHubWorkerType)) {
       setWorkerType(cloudHubWorkerType);
     }
-    if (isBlank(getWorkerType())) {
-      setWorkerType("Micro");
-    }
-
   }
 
   public boolean overrideProperties() {

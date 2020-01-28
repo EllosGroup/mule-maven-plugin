@@ -12,6 +12,7 @@ package org.mule.tools.client;
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.mule.tools.client.authentication.AuthenticationServiceClient.AUTHORIZATION_HEADER;
+import static org.mule.tools.client.authentication.AuthenticationServiceClient.ANYPOINT_SEESION_EXTEND;
 
 import java.util.*;
 
@@ -65,6 +66,7 @@ public abstract class AbstractMuleClient extends AbstractClient {
 
   private String orgId;
   private String businessGroupName;
+  private String businessGroupId;
 
   public AbstractMuleClient(AnypointDeployment anypointDeployment, DeployerLog log) {
     super(log);
@@ -80,6 +82,10 @@ public abstract class AbstractMuleClient extends AbstractClient {
 
     this.environmentName = anypointDeployment.getEnvironment();
     this.businessGroupName = anypointDeployment.getBusinessGroup();
+
+    if (anypointDeployment.getBusinessGroupId() != null) {
+      this.businessGroupId = anypointDeployment.getBusinessGroupId();
+    }
   }
 
   public AbstractMuleClient(DeployerLog log) {
@@ -88,7 +94,7 @@ public abstract class AbstractMuleClient extends AbstractClient {
 
   public void init() {
     bearerToken = getBearerToken(credentials);
-    orgId = getOrgId();
+    orgId = businessGroupId != null ? businessGroupId : getOrgId();
     envId = findEnvironmentByName(environmentName).id;
   }
 
@@ -186,7 +192,7 @@ public abstract class AbstractMuleClient extends AbstractClient {
   }
 
   public String getOrgId() {
-    return getBusinessGroupIdByBusinessGroupPath();
+    return businessGroupId != null ? businessGroupId : getBusinessGroupIdByBusinessGroupPath();
   }
 
   public String getEnvId() {
@@ -219,6 +225,7 @@ public abstract class AbstractMuleClient extends AbstractClient {
   protected void configureRequest(Invocation.Builder builder) {
     if (bearerToken != null) {
       builder.header(AUTHORIZATION_HEADER, "bearer " + bearerToken);
+      builder.header(ANYPOINT_SEESION_EXTEND, true);
     }
 
     if (envId != null && orgId != null) {

@@ -12,13 +12,10 @@ package org.mule.tools.api.classloader.model;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 public class ApplicationClassloaderModel {
 
   private ClassLoaderModel classLoaderModel;
   private List<ClassLoaderModel> mulePluginsClassloaderModels = new ArrayList<>();
-  private List<ClassLoaderModel> ramlsClassloaderModels = new ArrayList<>();
 
   public ApplicationClassloaderModel(ClassLoaderModel classLoaderModel) {
     this.classLoaderModel = classLoaderModel;
@@ -43,10 +40,6 @@ public class ApplicationClassloaderModel {
         .map(ClassLoaderModel::getArtifacts)
         .flatMap(Collection::stream)
         .collect(Collectors.toList()));
-    artifacts.addAll(ramlsClassloaderModels.stream()
-        .map(ClassLoaderModel::getArtifacts)
-        .flatMap(Collection::stream)
-        .collect(Collectors.toList()));
     return artifacts;
   }
 
@@ -54,20 +47,11 @@ public class ApplicationClassloaderModel {
     return mulePluginsClassloaderModels;
   }
 
-  public void addAllRamlClassloaderModels(Collection<ClassLoaderModel> ramlClassloaderModels) {
-    this.ramlsClassloaderModels.addAll(ramlClassloaderModels);
+  public String[] getPackages() {
+    return classLoaderModel.getPackages();
   }
 
-  public void addAllRamlToApplicationClassloaderModel(List<Artifact> ramlArtifacts) {
-    checkArgument(ramlArtifacts != null, "Raml artifacts list cannot be null");
-    for (Artifact artifact : ramlArtifacts) {
-      if (!classLoaderModel.getDependencies().contains(artifact)) {
-        classLoaderModel.getDependencies().add(artifact);
-      }
-    }
-  }
-
-  public List<ClassLoaderModel> getRamlsClassloaderModels() {
-    return ramlsClassloaderModels;
+  public String[] getResources() {
+    return classLoaderModel.getResources();
   }
 }

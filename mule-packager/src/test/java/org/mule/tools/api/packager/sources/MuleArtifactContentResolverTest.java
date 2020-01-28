@@ -18,6 +18,10 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.core.Is.is;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
+import org.hamcrest.core.StringContains;
+
+import org.mule.maven.client.api.model.BundleDependency;
 import org.mule.tools.api.packager.Pom;
 import org.mule.tools.api.packager.structure.ProjectStructure;
 
@@ -36,6 +40,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
+import org.w3c.dom.Document;
 
 public class MuleArtifactContentResolverTest {
 
@@ -62,7 +67,7 @@ public class MuleArtifactContentResolverTest {
   @Rule
   public ExpectedException expectedException = ExpectedException.none();
 
-  private MuleArtifactContentResolver resolver;
+  protected MuleArtifactContentResolver resolver;
   private File javaFolder;
   private File muleFolder;
   private File munitFolder;
@@ -80,6 +85,18 @@ public class MuleArtifactContentResolverTest {
       "\t\t<xml-module:validate-schema doc:name=\"Validate schema\" doc:id=\"f9656931-d3ca-4969-bf7d-4c8d87fe4918\" config-ref=\"XML_Config\" schemas=\"schemas/shipwire/warehouse/rma/v01/ASN.xsd\"/>\n"
       +
       "</mule>";
+  private String MALFORMED_MULE_CONFIG_CONTENT = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+      "<mule xmlns=\"http://www.mulesoft.org/schema/mule/core\"\n" +
+      "      xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n" +
+      "      xmlns:jms=\"http://www.mulesoft.org/schema/mule/jms\"\n" +
+      "      xsi:schemaLocation=\"\n" +
+      "\thttp://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd\n" +
+      "\thttp://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd\">\n" +
+      "\n" +
+      "\n" +
+      "\t\t<xml-module:validate-schema doc:name=\"Validate schema\"config-ref=\"XML_Config\" schemas=\"schemas/shipwire/warehouse/rma/v01/ASN.xsd\"\"/>\n"
+      +
+      "</mule>";
   private org.w3c.dom.Document documentMock;
   private org.w3c.dom.Element rootElementMock;
 
@@ -87,8 +104,8 @@ public class MuleArtifactContentResolverTest {
   public void setUp() throws IOException {
     temporaryFolder.create();
     Pom pomMock = mock(Pom.class);
-    resolver = new MuleArtifactContentResolver(new ProjectStructure(temporaryFolder.getRoot().toPath(), false), pomMock,
-                                               new ArrayList<>());
+    resolver = newResolver(new ProjectStructure(temporaryFolder.getRoot().toPath(), false), pomMock,
+                           new ArrayList<>());
     javaFolder = new File(temporaryFolder.getRoot(), JAVA_FOLDER_LOCATION);
     muleFolder = new File(temporaryFolder.getRoot(), MULE_FOLDER_LOCATION);
     munitFolder = new File(temporaryFolder.getRoot(), MUNIT_FOLDER_LOCATION);
@@ -111,7 +128,7 @@ public class MuleArtifactContentResolverTest {
   public void muleArtifactContentResolverNullPathArgumentInConstructorTest() {
     expectedException.expect(IllegalArgumentException.class);
     expectedException.expectMessage("Project structure should not be null");
-    new MuleArtifactContentResolver(null, null, null);
+    newResolver(null, null, null);
   }
 
   @Test
@@ -174,8 +191,8 @@ public class MuleArtifactContentResolverTest {
     jar2.createNewFile();
     jar3Folder.mkdirs();
     jar3.createNewFile();
-    resolver = new MuleArtifactContentResolver(new ProjectStructure(temporaryFolder.getRoot().toPath(), true), mock(Pom.class),
-                                               new ArrayList<>());
+    resolver = newResolver(new ProjectStructure(temporaryFolder.getRoot().toPath(), true), mock(Pom.class),
+                           new ArrayList<>());
     List<String> actualExportedResources = resolver.getTestExportedResources();
 
     assertThat("Exported resources does not contain all expected elements", actualExportedResources,
@@ -215,6 +232,24 @@ public class MuleArtifactContentResolverTest {
   }
 
   @Test
+  public void getConfigsThrowsExceptionIfThereIsAnInvalidConfig() throws Exception {
+    File config1 = new File(muleFolder, CONFIG_1);
+    File config2 = new File(muleFolder, CONFIG_2);
+    String expectedExceptionMessage =
+        "Element type \"xml-module:validate-schema\" must be followed by either attribute specifications, \">\" or \"/>\"";
+
+    config1.createNewFile();
+    FileUtils.writeStringToFile(config1, DEFAULT_MULE_CONFIG_CONTENT, Charset.defaultCharset());
+
+    config2.createNewFile();
+    FileUtils.writeStringToFile(config2, MALFORMED_MULE_CONFIG_CONTENT, Charset.defaultCharset());
+
+    expectedException.expect(RuntimeException.class);
+    expectedException.expectMessage(StringContains.containsString(expectedExceptionMessage));
+    List<String> actualConfigs = resolver.getConfigs();
+  }
+
+  @Test
   public void getTestConfigsTest() throws IOException {
     File config1 = new File(munitFolder, CONFIG_1);
     File config2 = new File(munitFolder, CONFIG_2);
@@ -234,8 +269,8 @@ public class MuleArtifactContentResolverTest {
 
     commonFile.createNewFile();
 
-    resolver = new MuleArtifactContentResolver(new ProjectStructure(temporaryFolder.getRoot().toPath(), true), mock(Pom.class),
-                                               new ArrayList<>());
+    resolver = newResolver(new ProjectStructure(temporaryFolder.getRoot().toPath(), true), mock(Pom.class),
+                           new ArrayList<>());
     List<String> actualConfigs = resolver.getTestConfigs();
 
     assertThat("Configs does not contain all expected elements", actualConfigs,
@@ -274,7 +309,7 @@ public class MuleArtifactContentResolverTest {
   @Test
   public void hasMuleAsRootElementWithNullName() {
     when(rootElementMock.getTagName()).thenReturn(null);
-    assertThat("Method should have returned false", !resolver.hasMuleAsRootElement(null));
+    assertThat("Method should have returned false", !resolver.hasMuleAsRootElement((Document) null));
   }
 
   @Test
@@ -285,6 +320,12 @@ public class MuleArtifactContentResolverTest {
 
   @Test
   public void hasMuleAsRootElementWithNullDocument() {
-    assertThat("Method should have returned false", !resolver.hasMuleAsRootElement(null));
+    assertThat("Method should have returned false", !resolver.hasMuleAsRootElement((Document) null));
   }
+
+  protected MuleArtifactContentResolver newResolver(ProjectStructure projectStructure, Pom pomMock,
+                                                    List<BundleDependency> objects) {
+    return new MuleArtifactContentResolver(projectStructure, pomMock, objects);
+  }
+
 }

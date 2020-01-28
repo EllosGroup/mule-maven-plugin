@@ -1,0 +1,72 @@
+{
+  "version": "1.2.0",
+  "artifactCoordinates": {
+    "groupId": "org.apache.maven.plugin.my.unit",
+    "artifactId": "mule-application-with-apis",
+    "version": "1.0.0-SNAPSHOT",
+    "type": "jar",
+    "classifier": "mule-application"
+  },
+  "dependencies": [
+    {
+      "artifactCoordinates": {
+        "groupId": "org.mule.test",
+        "artifactId": "raml-a",
+        "version": "1.0.0",
+        "type": "jar",
+        "classifier": "raml"
+      },
+      "uri": "repository/org/mule/test/raml-a/1.0.0/raml-a-1.0.0-raml.jar",
+      "resources": [
+        "META-INF/MANIFEST.MF",
+        "META-INF/maven/org.mule.test/raml-a/pom.properties",
+        "META-INF/maven/org.mule.test/raml-a/pom.xml"
+      ]
+    },
+    {
+      "artifactCoordinates": {
+        "groupId": "org.mule.test",
+        "artifactId": "raml-fragment",
+        "version": "1.0.0",
+        "type": "jar",
+        "classifier": "raml-fragment"
+      },
+      "uri": "repository/org/mule/test/raml-fragment/1.0.0/raml-fragment-1.0.0-raml-fragment.jar",
+      "resources": [
+        "META-INF/MANIFEST.MF",
+        "META-INF/maven/org.mule.test/raml-fragment/pom.properties",
+        "META-INF/maven/org.mule.test/raml-fragment/pom.xml"
+      ]
+    },
+    {
+      "artifactCoordinates": {
+        "groupId": "org.mule.test",
+        "artifactId": "raml-b",
+        "version": "1.0.0",
+        "type": "jar",
+        "classifier": "raml"
+      },
+      "uri": "repository/org/mule/test/raml-b/1.0.0/raml-b-1.0.0-raml.jar",
+      "resources": [
+        "META-INF/MANIFEST.MF",
+        "META-INF/maven/org.mule.test/raml-b/pom.properties",
+        "META-INF/maven/org.mule.test/raml-b/pom.xml"
+      ]
+    },
+    {
+      "artifactCoordinates": {
+        "groupId": "org.mule.test",
+        "artifactId": "raml-fragment",
+        "version": "2.0.0",
+        "type": "jar",
+        "classifier": "raml-fragment"
+      },
+      "uri": "repository/org/mule/test/raml-fragment/2.0.0/raml-fragment-2.0.0-raml-fragment.jar",
+      "resources": [
+        "META-INF/MANIFEST.MF",
+        "META-INF/maven/org.mule.test/raml-fragment/pom.properties",
+        "META-INF/maven/org.mule.test/raml-fragment/pom.xml"
+      ]
+    }
+  ]
+}

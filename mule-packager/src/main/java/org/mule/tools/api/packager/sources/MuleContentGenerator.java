@@ -106,10 +106,33 @@ public class MuleContentGenerator extends ContentGenerator {
    *
    * @param classLoaderModel the classloader model of the application being packaged
    */
+  @Deprecated
   public void createApplicationClassLoaderModelJsonFile(ClassLoaderModel classLoaderModel) {
+    createApplicationClassLoaderModelJsonFile(classLoaderModel, true);
+  }
+
+  /**
+   * It creates classloader-model.json in META-INF/mule-artifact
+   *
+   * @param classLoaderModel the classloader model of the application being packaged
+   * @param prettyPrinting
+   */
+  public void createApplicationClassLoaderModelJsonFile(ClassLoaderModel classLoaderModel, boolean prettyPrinting) {
     File destinationFolder =
         projectInformation.getBuildDirectory().resolve(META_INF.value()).resolve(MULE_ARTIFACT.value()).toFile();
-    createClassLoaderModelJsonFile(classLoaderModel, destinationFolder);
+    createClassLoaderModelJsonFile(classLoaderModel, destinationFolder, prettyPrinting);
+  }
+
+  /**
+   * It creates classloader-model.json in destinationFolder
+   *
+   * @param classLoaderModel the classloader model of the application being packaged
+   * @param prettyPrinting
+   * @param destinationFolder
+   */
+  public void createApplicationClassLoaderModelJsonFile(ClassLoaderModel classLoaderModel, boolean prettyPrinting,
+                                                        File destinationFolder) {
+    createClassLoaderModelJsonFile(classLoaderModel, destinationFolder, prettyPrinting);
   }
 
   /**
@@ -153,8 +176,21 @@ public class MuleContentGenerator extends ContentGenerator {
    * @param classLoaderModel the classloader model of the application being packaged
    * @return the created File containing the classloader model's JSON representation
    */
+  @Deprecated
   public static File createClassLoaderModelJsonFile(ClassLoaderModel classLoaderModel, File destinationFolder) {
-    return serializeToFile(classLoaderModel, destinationFolder);
+    return createClassLoaderModelJsonFile(classLoaderModel, destinationFolder, true);
+  }
+
+  /**
+   * It creates classloader-model.json in the destination folder
+   *
+   * @param classLoaderModel the classloader model of the application being packaged
+   * @param prettyPrinting if {@code true} will print the json using pretty print.
+   * @return the created File containing the classloader model's JSON representation
+   */
+  public static File createClassLoaderModelJsonFile(ClassLoaderModel classLoaderModel, File destinationFolder,
+                                                    boolean prettyPrinting) {
+    return serializeToFile(classLoaderModel, destinationFolder, prettyPrinting);
   }
 
   /**
@@ -174,20 +210,32 @@ public class MuleContentGenerator extends ContentGenerator {
     String destinationFileName = originPath.getFileName().toString();
     copyFile(originPath, destinationPath, destinationFileName);
 
-    AbstractDefaultValuesMuleArtifactJsonGenerator generator = MULE_POLICY.equals(projectInformation.getClassifier())
-        ? new DefaultValuesPolicyMuleArtifactJsonGenerator() : new DefaultValuesMuleArtifactJsonGenerator();
+    if (MULE_POLICY.equals(projectInformation.getClassifier())) {
+      new DefaultValuesPolicyMuleArtifactJsonGenerator().generate(getMulePolicyArtifactContentResolver());
+    } else {
+      new DefaultValuesMuleArtifactJsonGenerator().generate(getMuleArtifactContentResolver());
+    }
+  }
 
-    generator.generate(getMuleArtifactContentResolver());
+  private MuleArtifactContentResolver getMulePolicyArtifactContentResolver() {
+    if (muleArtifactContentResolver == null) {
+      muleArtifactContentResolver =
+          new MulePolicyArtifactContentResolver(getProjectStructure(), projectInformation.getEffectivePom(),
+                                                projectInformation.getProject().getBundleDependencies());
+    }
+    return muleArtifactContentResolver;
   }
 
   private MuleArtifactContentResolver getMuleArtifactContentResolver() {
     if (muleArtifactContentResolver == null) {
-      ProjectStructure projectStructure =
-          new ProjectStructure(projectInformation.getProjectBaseFolder(), projectInformation.getBuildDirectory(),
-                               projectInformation.isTestProject());
-      muleArtifactContentResolver = new MuleArtifactContentResolver(projectStructure, projectInformation.getEffectivePom(),
+      muleArtifactContentResolver = new MuleArtifactContentResolver(getProjectStructure(), projectInformation.getEffectivePom(),
                                                                     projectInformation.getProject().getBundleDependencies());
     }
     return muleArtifactContentResolver;
+  }
+
+  private ProjectStructure getProjectStructure() {
+    return new ProjectStructure(projectInformation.getProjectBaseFolder(), projectInformation.getBuildDirectory(),
+                                projectInformation.isTestProject());
   }
 }

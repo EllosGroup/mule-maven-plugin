@@ -11,29 +11,10 @@
 package org.mule.tools.maven.mojo;
 
 import static java.lang.String.format;
-import org.mule.maven.client.api.model.BundleDependency;
-import org.mule.maven.client.internal.AetherMavenClient;
-import org.mule.tools.api.classloader.model.ApplicationClassLoaderModelAssembler;
-import org.mule.tools.api.classloader.model.Artifact;
-import org.mule.tools.api.classloader.model.ArtifactCoordinates;
-import org.mule.tools.api.classloader.model.ClassLoaderModel;
-import org.mule.tools.api.classloader.model.SharedLibraryDependency;
-import org.mule.tools.api.classloader.model.resolver.AdditionalPluginDependenciesResolver;
-import org.mule.tools.api.classloader.model.resolver.ApplicationDependencyResolver;
-import org.mule.tools.api.classloader.model.resolver.MulePluginClassloaderModelResolver;
-import org.mule.tools.api.classloader.model.resolver.RamlClassloaderModelResolver;
-import org.mule.tools.api.packager.sources.MuleContentGenerator;
-import org.mule.tools.api.repository.ArtifactInstaller;
-import org.mule.tools.api.repository.RepositoryGenerator;
-import org.mule.tools.api.util.Project;
-import org.mule.tools.api.validation.MulePluginsCompatibilityValidator;
-import org.mule.tools.maven.utils.DependencyProject;
-import org.mule.tools.maven.utils.MavenPackagerLog;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
+import static org.mule.tools.api.packager.structure.FolderNames.META_INF;
+import static org.mule.tools.api.packager.structure.FolderNames.MULE_ARTIFACT;
+import org.mule.tools.api.util.MavenComponents;
+import org.mule.tools.api.util.SourcesProcessor;
 
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -47,49 +28,50 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
     requiresDependencyResolution = ResolutionScope.RUNTIME)
 public class ProcessSourcesMojo extends AbstractMuleMojo {
 
+  /**
+   * @deprecated Should not be considered as validations for compatible plugins is already done when resolving dependencies.
+   */
+  @Deprecated
   @Parameter(defaultValue = "${skipPluginCompatibilityValidation}")
   protected boolean skipPluginCompatibilityValidation = false;
-  protected final MulePluginsCompatibilityValidator mulePluginsCompatibilityValidator = new MulePluginsCompatibilityValidator();
+
+  @Parameter(defaultValue = "${prettyPrinting}")
+  protected boolean prettyPrinting = false;
 
   @Override
   public void doExecute() throws MojoFailureException {
     getLog().debug("Processing sources...");
-    if (!(lightweightPackage && skipPluginCompatibilityValidation)) {
-      RepositoryGenerator repositoryGenerator =
-          new RepositoryGenerator(session.getCurrentProject().getFile(), outputDirectory,
-                                  new ArtifactInstaller(new MavenPackagerLog(getLog())),
-                                  getClassLoaderModelAssembler());
-      try {
-        ClassLoaderModel classLoaderModel = repositoryGenerator.generate(lightweightPackage);
-        for (SharedLibraryDependency sharedLibraryDependency : sharedLibraries) {
-          classLoaderModel.getDependencies().stream()
-              .filter(dep -> dep.getArtifactCoordinates().getArtifactId().equals(sharedLibraryDependency.getArtifactId()) &&
-                  dep.getArtifactCoordinates().getGroupId().equals(sharedLibraryDependency.getGroupId()))
-              .findFirst().ifPresent(dep -> dep.setShared(true));
-        }
-        Project project = getProject(classLoaderModel);
-        mulePluginsCompatibilityValidator.validate(getResolver(project).resolve());
-        if (!lightweightPackage) {
-          ((MuleContentGenerator) getContentGenerator()).createApplicationClassLoaderModelJsonFile(classLoaderModel);
-        }
-      } catch (Exception e) {
-        String message = format("There was an exception while creating the repository of [%s]", project.toString());
-        throw new MojoFailureException(message, e);
-      }
+    if (skipPluginCompatibilityValidation) {
+      getLog()
+          .warn(
+                "Ignoring skipPluginCompatibilityValidation property as it is deprecated. Compatibility between mule-plugin versions is always done.");
     }
-  }
 
+    MavenComponents mavenComponents =
+        new MavenComponents()
+            .withLog(getLog())
+            .withProject(project)
+            .withOutputDirectory(outputDirectory)
+            .withSession(session)
+            .withSharedLibraries(sharedLibraries)
+            .withProjectBuilder(projectBuilder)
+            .withRepositorySystem(repositorySystem)
+            .withLocalRepository(localRepository)
+            .withRemoteArtifactRepositories(remoteArtifactRepositories)
+            .withClassifier(classifier)
+            .withAdditionalPluginDependencies(additionalPluginDependencies)
+            .withProjectBaseFolder(projectBaseFolder);
 
-  protected ApplicationClassLoaderModelAssembler getClassLoaderModelAssembler() {
-    AetherMavenClient aetherMavenClient = getAetherMavenClient();
-    return new ApplicationClassLoaderModelAssembler(new ApplicationDependencyResolver(aetherMavenClient),
-                                                    new MulePluginClassloaderModelResolver(aetherMavenClient),
-                                                    new RamlClassloaderModelResolver(aetherMavenClient),
-                                                    new AdditionalPluginDependenciesResolver(aetherMavenClient,
-                                                                                             additionalPluginDependencies == null
-                                                                                                 ? new ArrayList<>()
-                                                                                                 : additionalPluginDependencies,
-                                                                                             new File(outputDirectory, "temp")));
+    SourcesProcessor sourcesProcessor = new SourcesProcessor(mavenComponents);
+
+    try {
+      sourcesProcessor
+          .process(prettyPrinting, lightweightPackage, useLocalRepository, testJar, outputDirectory,
+                   getProjectInformation().getBuildDirectory().resolve(META_INF.value()).resolve(MULE_ARTIFACT.value()).toFile());
+    } catch (Exception e) {
+      String message = format("There was an exception while creating the repository of [%s]", project.toString());
+      throw new MojoFailureException(message, e);
+    }
   }
 
   @Override
@@ -97,22 +79,4 @@ public class ProcessSourcesMojo extends AbstractMuleMojo {
     return "MULE_MAVEN_PLUGIN_PROCESS_SOURCES_PREVIOUS_RUN_PLACEHOLDER";
   }
 
-  public Project getProject(ClassLoaderModel classLoaderModel) {
-    Project dependencyProject = new DependencyProject(project);
-    return new Project() {
-
-      @Override
-      public List<ArtifactCoordinates> getDependencies() {
-        return classLoaderModel.getDependencies()
-            .stream()
-            .map(Artifact::getArtifactCoordinates)
-            .collect(Collectors.toList());
-      }
-
-      @Override
-      public List<BundleDependency> getBundleDependencies() {
-        return dependencyProject.getBundleDependencies();
-      }
-    };
-  }
 }

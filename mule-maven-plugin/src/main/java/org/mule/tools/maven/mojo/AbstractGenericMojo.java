@@ -21,9 +21,9 @@ import org.mule.tools.api.repository.MuleMavenPluginClientBuilder;
 import org.mule.tools.api.validation.project.AbstractProjectValidator;
 import org.mule.tools.api.validation.project.ProjectValidatorFactory;
 import org.mule.tools.api.classloader.model.resolver.Plugin;
-import org.mule.tools.maven.utils.ArtifactUtils;
-import org.mule.tools.maven.utils.MavenPackagerLog;
-import org.mule.tools.maven.utils.MavenProjectInformation;
+import org.mule.tools.api.util.ArtifactUtils;
+import org.mule.tools.api.util.MavenPackagerLog;
+import org.mule.tools.api.util.MavenProjectInformation;
 import org.mule.tools.maven.utils.ProjectDirectoryUpdater;
 import org.mule.tools.model.Deployment;
 import org.mule.tools.model.agent.AgentDeployment;
@@ -110,6 +110,9 @@ public abstract class AbstractGenericMojo extends AbstractMojo {
   @Parameter(defaultValue = "${lightweightPackage}")
   protected boolean lightweightPackage = false;
 
+  @Parameter(defaultValue = "${useLocalRepository}")
+  protected boolean useLocalRepository = false;
+
   protected AbstractProjectValidator validator;
 
   protected ProjectVerifier verifier;
@@ -123,6 +126,10 @@ public abstract class AbstractGenericMojo extends AbstractMojo {
   public void initMojo() {
     if (projectBuildDirectory != null) {
       new ProjectDirectoryUpdater(project).updateBuildDirectory(projectBuildDirectory);
+    }
+    if (!lightweightPackage && useLocalRepository) {
+      getLog().info("'useLocalRepository' would be ignored, it can only be used when 'lightweightPackage' is enabled");
+      useLocalRepository = false;
     }
   }
 

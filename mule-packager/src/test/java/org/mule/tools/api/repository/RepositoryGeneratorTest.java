@@ -12,6 +12,7 @@ package org.mule.tools.api.repository;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import java.io.File;
@@ -28,6 +29,7 @@ import org.junit.rules.TemporaryFolder;
 import org.mockito.Spy;
 import org.mule.tools.api.classloader.model.ApplicationClassLoaderModelAssembler;
 import org.mule.tools.api.classloader.model.ApplicationClassloaderModel;
+import org.mule.tools.api.classloader.model.ApplicationGAVModel;
 import org.mule.tools.api.classloader.model.Artifact;
 import org.mule.tools.api.classloader.model.ArtifactCoordinates;
 import org.mule.tools.api.util.FileUtils;
@@ -48,6 +50,7 @@ public class RepositoryGeneratorTest {
   private ProjectBuildingResult resultMock;
   private Set<Artifact> artifacts;
   private ApplicationClassloaderModel appModelMock;
+  private ApplicationGAVModel appGAVModel;
 
   @Rule
   public ExpectedException exception = ExpectedException.none();
@@ -65,9 +68,10 @@ public class RepositoryGeneratorTest {
     artifactInstallerMock = mock(ArtifactInstaller.class);
     ApplicationClassLoaderModelAssembler applicationClassloaderModelAssemblerMock =
         mock(ApplicationClassLoaderModelAssembler.class);
+    appGAVModel = new ApplicationGAVModel(GROUP_ID, ARTIFACT_ID, VERSION);
     repositoryGenerator = new RepositoryGenerator(temporaryFolder.newFile("pom.xml"),
                                                   temporaryFolder.getRoot(), artifactInstallerMock,
-                                                  applicationClassloaderModelAssemblerMock);
+                                                  applicationClassloaderModelAssemblerMock, appGAVModel);
     repositoryGeneratorSpy = spy(repositoryGenerator);
     appModelMock = mock(ApplicationClassloaderModel.class);
   }
@@ -102,9 +106,9 @@ public class RepositoryGeneratorTest {
   public void installEmptySetArtifactsTest() throws IOException {
     File repositoryFolder = temporaryFolder.getRoot();
     when(appModelMock.getArtifacts()).thenReturn(Collections.emptySet());
-    repositoryGeneratorSpy.installArtifacts(repositoryFolder, artifactInstallerMock, appModelMock);
+    repositoryGeneratorSpy.installArtifacts(repositoryFolder, artifactInstallerMock, appModelMock, false);
     verify(repositoryGeneratorSpy, times(1)).generateMarkerFileInRepositoryFolder(repositoryFolder);
-    verify(artifactInstallerMock, times(0)).installArtifact(any(), any(), any());
+    verify(artifactInstallerMock, times(0)).installArtifact(any(), any(), any(), eq(false));
   }
 
   @Test
@@ -112,9 +116,9 @@ public class RepositoryGeneratorTest {
     File repositoryFolder = temporaryFolder.getRoot();
     buildArtifacts();
     when(appModelMock.getArtifacts()).thenReturn(artifacts);
-    repositoryGeneratorSpy.installArtifacts(repositoryFolder, artifactInstallerMock, appModelMock);
+    repositoryGeneratorSpy.installArtifacts(repositoryFolder, artifactInstallerMock, appModelMock, true);
     verify(repositoryGeneratorSpy, times(0)).generateMarkerFileInRepositoryFolder(repositoryFolder);
-    verify(artifactInstallerMock, times(NUMBER_ARTIFACTS)).installArtifact(any(), any(), any());
+    verify(artifactInstallerMock, times(NUMBER_ARTIFACTS)).installArtifact(any(), any(), any(), eq(true));
   }
 
   @Test
