@@ -11,6 +11,7 @@ import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -35,7 +36,11 @@ import org.glassfish.jersey.media.multipart.file.FileDataBodyPart;
 import org.mule.tools.client.AbstractMuleClient;
 import org.mule.tools.client.arm.model.Application;
 import org.mule.tools.client.arm.model.Applications;
+import org.mule.tools.client.arm.model.Component;
+import org.mule.tools.client.arm.model.Components;
 import org.mule.tools.client.arm.model.Data;
+import org.mule.tools.client.arm.model.EnableAnalytics;
+import org.mule.tools.client.arm.model.EnableTracking;
 import org.mule.tools.client.arm.model.RegistrationToken;
 import org.mule.tools.client.arm.model.Servers;
 import org.mule.tools.client.arm.model.Target;
@@ -56,6 +61,11 @@ public class ArmClient extends AbstractMuleClient {
 
   private static final String SERVERS = HYBRID_API_V1 + "/servers";
   private static final String REGISTRATION = HYBRID_API_V1 + "/servers/registrationToken";
+  
+  private static final String TARGETS = HYBRID_API_V1 + "/targets";
+  private static final String COMPONENTS = "components";
+  
+  private static final String TRACKED_APPLICATIONS = "trackedApplications";
 
   private boolean armInsecure;
 
@@ -90,7 +100,7 @@ public class ArmClient extends AbstractMuleClient {
   public String undeployApplication(ApplicationMetadata applicationMetadata) {
     Integer applicationId = findApplicationId(applicationMetadata);
     if (applicationId == null) {
-      throw new NotFoundException("The " + applicationMetadata.toString() + "does not exist.");
+      throw new NotFoundException("The " + applicationMetadata.toString() + " does not exist.");
     }
     return undeployApplication(applicationId);
   }
@@ -99,7 +109,10 @@ public class ArmClient extends AbstractMuleClient {
     MultiPart body = buildRequestBody(applicationMetadata);
     Response response = post(baseUri, APPLICATIONS, Entity.entity(body, body.getMediaType()));
     checkResponseStatus(response);
-    return response.readEntity(Application.class);
+    Application app = response.readEntity(Application.class);
+    // Enable Analytics & Tracking
+    enableAnalyticsAndTracking(applicationMetadata, app);
+    return app;
   }
 
   public Application redeployApplication(int applicationId, ApplicationMetadata applicationMetadata) {
@@ -107,6 +120,57 @@ public class ArmClient extends AbstractMuleClient {
     Response response = patch(baseUri, APPLICATIONS + "/" + applicationId, Entity.entity(body, body.getMediaType()));
     checkResponseStatus(response);
     return response.readEntity(Application.class);
+  }
+  
+  private void enableAnalyticsAndTracking(ApplicationMetadata applicationMetadata, Application app) {
+    if (applicationMetadata.isEnableAnalytics() || applicationMetadata.isEnableTracking()) {
+      String targetId = app.data.target.id;
+      Components components = getComponents(targetId);
+      if (applicationMetadata.isEnableAnalytics()) {
+        Component component = findComponent(components, "mule.agent.tracking.handler.analytics");
+        if (component != null) {
+          EnableAnalytics ea = new EnableAnalytics();
+          ea.enable = true;
+          Response response = patch(baseUri, TARGETS + "/" + targetId + "/" + COMPONENTS + "/" + component.component.id, ea);
+          log.info("Enable Analytics response: " + response.getStatus());
+        }
+      }
+      if (applicationMetadata.isEnableTracking()) {
+        Component component = findComponent(components, "mule.agent.tracking.service");
+        if (component != null) {
+          String appName = app.data.artifact.name;
+          Map<String,Object> config = component.configuration;
+          List<Map<String, String>> trackedApplications = null;
+          if (config != null) {
+            trackedApplications = (List<Map<String, String>>) config.get(TRACKED_APPLICATIONS);
+          }
+          else {
+            config = new HashMap<String,Object>();
+            trackedApplications = new ArrayList<Map<String, String>>();
+            config.put(TRACKED_APPLICATIONS, trackedApplications);
+          }
+          
+          boolean found = false;
+          for (Map<String, String> trackedApp : trackedApplications) {
+            if (appName.equals(trackedApp.get("appName"))) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            Map<String,String> trackedApp = new HashMap<>();
+            trackedApp.put("trackingLevel", "DEBUG");
+            trackedApp.put("appName", appName);
+            trackedApplications.add(trackedApp);
+          }
+          EnableTracking et = new EnableTracking();
+          et.enabled = true;
+          et.configuration = config;
+          Response response = patch(baseUri, TARGETS + "/" + targetId + "/" + COMPONENTS +"/" + component.component.id, et);
+          log.info("Enable Tracking response: " + response.getStatus());
+        }
+      }
+    }    
   }
 
   private MultiPart buildRequestBody(ApplicationMetadata metadata) {
@@ -205,7 +269,7 @@ public class ArmClient extends AbstractMuleClient {
 
   public Integer findApplicationId(ApplicationMetadata applicationMetadata) {
     Applications apps = getApplications();
-    Data[] appArray = getApplications().data;
+    Data[] appArray = apps.data;
     if (appArray == null) {
       return null;
     }
@@ -213,6 +277,21 @@ public class ArmClient extends AbstractMuleClient {
     for (int i = 0; i < appArray.length; i++) {
       if (applicationMetadata.getName().equals(appArray[i].artifact.name) && targetId.equals(appArray[i].target.id)) {
         return appArray[i].id;
+      }
+    }
+    return null;
+  }
+  
+  public Components getComponents(String targetId) {
+    Components components = get(baseUri, TARGETS + "/" + targetId + "/" + COMPONENTS, Components.class);
+    return components;
+  }
+  
+  public Component findComponent(Components components, String name) {
+    Component[] compArray = components.data;
+    for (int i = 0; i < compArray.length; i++) {
+      if (name.equals(compArray[i].component.name)) {
+        return compArray[i];
       }
     }
     return null;

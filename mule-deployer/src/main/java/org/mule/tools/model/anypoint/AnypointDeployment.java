@@ -52,6 +52,12 @@ public abstract class AnypointDeployment extends Deployment {
   @Parameter
   protected boolean skipDeploymentVerification = false;
 
+  @Parameter
+  protected boolean enableAnalytics = false;
+  
+  @Parameter
+  protected boolean enableTracking = false;
+  
   /**
    * Anypoint Platform username.
    *
@@ -181,6 +187,34 @@ public abstract class AnypointDeployment extends Deployment {
 
   public void setSkipDeploymentVerification(Boolean skipDeploymentVerification) {
     this.skipDeploymentVerification = skipDeploymentVerification;
+  }
+
+  /**
+   * @return the enableAnalytics
+   */
+  public boolean isEnableAnalytics() {
+    return enableAnalytics;
+  }
+
+  /**
+   * @param enableAnalytics the enableAnalytics to set
+   */
+  public void setEnableAnalytics(boolean enableAnalytics) {
+    this.enableAnalytics = enableAnalytics;
+  }
+
+  /**
+   * @return the enableTracking
+   */
+  public boolean isEnableTracking() {
+    return enableTracking;
+  }
+
+  /**
+   * @param enableTracking the enableTracking to set
+   */
+  public void setEnableTracking(boolean enableTracking) {
+    this.enableTracking = enableTracking;
   }
 
   public void setEnvironmentSpecificValues() throws DeploymentException {

@@ -23,13 +23,17 @@ public class ApplicationMetadata {
   private final TargetType targetType;
   private final String target;
   private final Map<String, String> properties;
+  private final boolean enableAnalytics;
+  private final boolean enableTracking;
 
-  public ApplicationMetadata(File file, String name, TargetType targetType, String target, Map<String, String> properties) {
+  public ApplicationMetadata(File file, String name, TargetType targetType, String target, Map<String, String> properties, boolean enableAnalytics, boolean enableTracking) {
     this.file = file;
     this.name = name;
     this.targetType = targetType;
     this.target = target;
     this.properties = properties;
+    this.enableAnalytics = enableAnalytics;
+    this.enableTracking = enableTracking;
   }
 
   public File getFile() {
@@ -50,6 +54,14 @@ public class ApplicationMetadata {
 
   public Map<String, String> getProperties() {
     return properties;
+  }
+
+  public boolean isEnableAnalytics() {
+    return enableAnalytics;
+  }
+
+  public boolean isEnableTracking() {
+    return enableTracking;
   }
 
   @Override
