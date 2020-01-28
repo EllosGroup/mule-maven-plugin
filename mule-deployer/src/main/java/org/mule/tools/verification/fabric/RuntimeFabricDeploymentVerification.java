@@ -79,7 +79,7 @@ public class RuntimeFabricDeploymentVerification implements DeploymentVerificati
 
     @Override
     public void onTimeout(Deployment deployment) {
-      client.deleteDeployment(getDeploymentId(deployment));
+      return;
     }
 
     @Override
@@ -89,7 +89,7 @@ public class RuntimeFabricDeploymentVerification implements DeploymentVerificati
 
     @Override
     public String getRetryExhaustedMessage() {
-      return "Runtime Fabric deployment has timeouted";
+      return "Runtime Fabric deployment has timed out";
     }
   }
 }
