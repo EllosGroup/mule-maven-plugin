@@ -6,32 +6,24 @@
  */
 package org.mule.tools.client;
 
-import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.apache.commons.lang3.StringUtils.isEmpty;
-import static org.mule.tools.client.authentication.AuthenticationServiceClient.AUTHORIZATION_HEADER;
-import static org.mule.tools.client.authentication.AuthenticationServiceClient.ANYPOINT_SEESION_EXTEND;
-
-import java.util.*;
-
-import javax.ws.rs.client.Invocation;
-
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
-import org.mule.tools.client.arm.model.User;
-import org.mule.tools.client.core.AbstractClient;
-import org.mule.tools.client.arm.model.Environment;
-import org.mule.tools.client.arm.model.Environments;
-import org.mule.tools.client.arm.model.Organization;
-import org.mule.tools.client.arm.model.UserInfo;
+import com.google.gson.*;
+import org.mule.tools.client.arm.model.*;
 import org.mule.tools.client.authentication.AuthenticationServiceClient;
 import org.mule.tools.client.authentication.model.AnypointCredential;
 import org.mule.tools.client.authentication.model.AnypointToken;
 import org.mule.tools.client.authentication.model.Credentials;
+import org.mule.tools.client.core.AbstractClient;
+import org.mule.tools.client.core.exception.ClientException;
 import org.mule.tools.model.anypoint.AnypointDeployment;
 import org.mule.tools.utils.DeployerLog;
+
+import javax.ws.rs.client.Invocation;
+import java.util.*;
+
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.mule.tools.client.authentication.AuthenticationServiceClient.ANYPOINT_SEESION_EXTEND;
+import static org.mule.tools.client.authentication.AuthenticationServiceClient.AUTHORIZATION_HEADER;
 
 public abstract class AbstractMuleClient extends AbstractClient {
 
@@ -336,4 +328,13 @@ public abstract class AbstractMuleClient extends AbstractClient {
   public Environments getEnvironments() {
     return get(baseUri, String.format(ENVIRONMENTS, orgId), Environments.class);
   }
+
+  protected String toJson(Object item) throws ClientException {
+    return new GsonBuilder().setPrettyPrinting().create().toJson(item);
+  }
+
+  protected <T> T fromJson(String json, Class<T> clazz) throws ClientException {
+    return new GsonBuilder().create().fromJson(json, clazz);
+  }
+
 }

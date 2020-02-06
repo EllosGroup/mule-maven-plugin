@@ -58,6 +58,9 @@ public abstract class AnypointDeployment extends Deployment {
   @Parameter
   protected boolean enableTracking = false;
   
+  @Parameter
+  protected boolean duplicateApplicationAllowed = false;
+  
   /**
    * Anypoint Platform username.
    *
@@ -217,6 +220,14 @@ public abstract class AnypointDeployment extends Deployment {
     this.enableTracking = enableTracking;
   }
 
+  public boolean isDuplicateApplicationAllowed() {
+    return duplicateApplicationAllowed;
+  }
+
+  public void setDuplicateApplicationAllowed(boolean duplicateApplicationAllowed) {
+    this.duplicateApplicationAllowed = duplicateApplicationAllowed;
+  }
+
   public void setEnvironmentSpecificValues() throws DeploymentException {
     // TODO why we use a prop if this are a parameter ?
 
@@ -261,4 +272,5 @@ public abstract class AnypointDeployment extends Deployment {
       setAuthToken(authToken);
     }
   }
+
 }

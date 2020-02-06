@@ -66,7 +66,7 @@ public class ApplicationMetadata {
 
   @Override
   public String toString() {
-    String description = "application %s on %s %s";
-    return format(description, name, targetType, target, properties);
+    String description = "application %s on %s %s, properties=%s, enableAnalytics=%s, enableTracking=%s";
+    return format(description, name, targetType, target, properties != null ? properties : "", enableAnalytics, enableTracking);
   }
 }

@@ -3,7 +3,7 @@
 
     <groupId>org.mule.tools.maven</groupId>
     <artifactId>mule-artifact-tools</artifactId>
-    <version>2.3.4-SNAPSHOT</version>
+    <version>2.3.4-ELLOS-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Mule Artifact Tools</name>
@@ -297,6 +297,18 @@
         </repository>
     </repositories>
     <distributionManagement>
+        <snapshotRepository>
+            <id>deployment</id>
+            <name>nexus-snapshots</name>
+            <url>http://nexus/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>deployment</id>
+            <name>nexus-releases</name>
+            <url>http://nexus/content/repositories/releases</url>
+        </repository>
+    </distributionManagement>
+<!--    <distributionManagement>
         <repository>
             <id>mule-releases</id>
             <name>Mule Release Repository</name>
@@ -309,7 +321,7 @@
             <uniqueVersion>false</uniqueVersion>
         </snapshotRepository>
     </distributionManagement>
-    <scm>
+    --><scm>
         <connection>scm:git:git://github.com/mulesoft/mule-maven-plugin.git</connection>
         <developerConnection>scm:git:git@github.com:mulesoft/mule-maven-plugin.git</developerConnection>
         <url>https://github.com/mulesoft/mule-maven-plugin</url>

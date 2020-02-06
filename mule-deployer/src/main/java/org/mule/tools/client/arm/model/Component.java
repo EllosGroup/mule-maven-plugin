@@ -9,13 +9,11 @@ package org.mule.tools.client.arm.model;
 import java.util.Map;
 
 public class Component {
+  public static final String TRACKED_APPLICATIONS = "trackedApplications";
+  public static final String MULE_AGENT_TRACKING_SERVICE = "mule.agent.tracking.service";
+  public static final String MULE_AGENT_TRACKING_HANDLER_ANALYTICS = "mule.agent.tracking.handler.analytics";
   
-  public InnerComponent component;
+  public ComponentInfo component;
   public boolean enabled;
   public Map<String, Object> configuration;
-  
-  public class InnerComponent {
-    public String id;
-    public String name;
-  }
 }

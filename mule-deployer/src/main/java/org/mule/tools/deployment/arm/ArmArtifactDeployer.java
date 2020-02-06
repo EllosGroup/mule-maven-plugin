@@ -6,17 +6,17 @@
  */
 package org.mule.tools.deployment.arm;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 import org.mule.tools.client.arm.ApplicationMetadata;
 import org.mule.tools.client.arm.ArmClient;
 import org.mule.tools.client.core.exception.DeploymentException;
+import org.mule.tools.deployment.artifact.ArtifactDeployer;
 import org.mule.tools.model.Deployment;
 import org.mule.tools.model.anypoint.ArmDeployment;
-import org.mule.tools.deployment.artifact.ArtifactDeployer;
 import org.mule.tools.utils.DeployerLog;
 import org.mule.tools.verification.DeploymentVerification;
 import org.mule.tools.verification.arm.ArmDeploymentVerification;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 /**
  * Deploys mule artifacts to ARM, using the {@link ArmClient}.
@@ -116,7 +116,7 @@ public class ArmArtifactDeployer implements ArtifactDeployer {
    *
    * @throws DeploymentException
    */
-  public void redeployApplication() {
+  public void redeployApplication() throws DeploymentException {
     log.info("Found " + getApplicationMetadata().toString() + ". Redeploying application...");
     client.redeployApplication(getApplicationId(), getApplicationMetadata());
   }

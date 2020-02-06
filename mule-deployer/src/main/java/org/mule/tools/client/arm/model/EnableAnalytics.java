@@ -7,5 +7,5 @@
 package org.mule.tools.client.arm.model;
 
 public class EnableAnalytics {
-  public boolean enable;
+  public boolean enabled;
 }

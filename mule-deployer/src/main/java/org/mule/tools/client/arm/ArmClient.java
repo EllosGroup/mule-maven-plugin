@@ -6,50 +6,33 @@
  */
 package org.mule.tools.client.arm;
 
-import java.io.File;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-import javax.ws.rs.NotFoundException;
-import javax.ws.rs.client.ClientBuilder;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.core.Response;
-
-import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.media.multipart.MultiPart;
 import org.glassfish.jersey.media.multipart.file.FileDataBodyPart;
-
 import org.mule.tools.client.AbstractMuleClient;
-import org.mule.tools.client.arm.model.Application;
-import org.mule.tools.client.arm.model.Applications;
-import org.mule.tools.client.arm.model.Component;
-import org.mule.tools.client.arm.model.Components;
-import org.mule.tools.client.arm.model.Data;
-import org.mule.tools.client.arm.model.EnableAnalytics;
-import org.mule.tools.client.arm.model.EnableTracking;
-import org.mule.tools.client.arm.model.RegistrationToken;
-import org.mule.tools.client.arm.model.Servers;
-import org.mule.tools.client.arm.model.Target;
-import org.mule.tools.client.arm.model.Targets;
+import org.mule.tools.client.arm.model.*;
+import org.mule.tools.client.core.exception.ClientException;
+import org.mule.tools.client.core.exception.DeploymentException;
 import org.mule.tools.client.model.TargetType;
 import org.mule.tools.model.Deployment;
 import org.mule.tools.model.anypoint.AnypointDeployment;
 import org.mule.tools.model.anypoint.ArmDeployment;
 import org.mule.tools.utils.DeployerLog;
+
+import javax.net.ssl.*;
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.Response;
+import java.io.File;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.util.*;
+
+import static org.mule.tools.client.arm.model.Component.*;
 
 public class ArmClient extends AbstractMuleClient {
 
@@ -64,14 +47,15 @@ public class ArmClient extends AbstractMuleClient {
   
   private static final String TARGETS = HYBRID_API_V1 + "/targets";
   private static final String COMPONENTS = "components";
-  
-  private static final String TRACKED_APPLICATIONS = "trackedApplications";
+  private static final String STARTED_STATUS = "STARTED";
 
   private boolean armInsecure;
+  private boolean duplicateApplicationAllowed;
 
   public ArmClient(Deployment armDeployment, DeployerLog log) {
     super((AnypointDeployment) armDeployment, log);
     armInsecure = ((ArmDeployment) armDeployment).isArmInsecure();
+    duplicateApplicationAllowed = ((ArmDeployment) armDeployment).isDuplicateApplicationAllowed();
     if (armInsecure) {
       log.warn("Using insecure mode for connecting to ARM, please consider configuring your truststore with ARM certificates. This option is insecure and not intended for production use.");
     }
@@ -84,7 +68,7 @@ public class ArmClient extends AbstractMuleClient {
 
   public Boolean isStarted(int applicationId) {
     Application application = getApplication(applicationId);
-    return "STARTED".equals(application.data.lastReportedStatus);
+    return STARTED_STATUS.equals(application.data.lastReportedStatus);
   }
 
   public Application getApplication(int applicationId) {
@@ -105,54 +89,94 @@ public class ArmClient extends AbstractMuleClient {
     return undeployApplication(applicationId);
   }
 
-  public Application deployApplication(ApplicationMetadata applicationMetadata) {
+  public Application deployApplication(ApplicationMetadata applicationMetadata) throws DeploymentException {
+    validateApplicationState(applicationMetadata);
     MultiPart body = buildRequestBody(applicationMetadata);
     Response response = post(baseUri, APPLICATIONS, Entity.entity(body, body.getMediaType()));
     checkResponseStatus(response);
-    Application app = response.readEntity(Application.class);
-    // Enable Analytics & Tracking
-    enableAnalyticsAndTracking(applicationMetadata, app);
-    return app;
+    Application application = response.readEntity(Application.class);
+    enableAnalyticsAndTracking(applicationMetadata, application);
+    return application;
   }
-
-  public Application redeployApplication(int applicationId, ApplicationMetadata applicationMetadata) {
+  
+  public Application redeployApplication(int applicationId, ApplicationMetadata applicationMetadata) throws DeploymentException {
+    validateApplicationState(applicationMetadata);
     MultiPart body = buildRequestBody(applicationMetadata);
     Response response = patch(baseUri, APPLICATIONS + "/" + applicationId, Entity.entity(body, body.getMediaType()));
     checkResponseStatus(response);
-    return response.readEntity(Application.class);
+    Application application = response.readEntity(Application.class);
+    enableAnalyticsAndTracking(applicationMetadata, application);
+    return application;
   }
-  
-  private void enableAnalyticsAndTracking(ApplicationMetadata applicationMetadata, Application app) {
+
+  private void validateApplicationState(ApplicationMetadata applicationMetadata) throws DeploymentException {
+    Applications applications = getApplications();
+    Data[] appsData = applications.data;
+    if (appsData != null) {
+      if (!duplicateApplicationAllowed) {
+        for (int i = 0; i < appsData.length - 1; i++) {
+          Data d = appsData[i];
+          if ((d.desiredStatus.equals(STARTED_STATUS) || d.lastReportedStatus.equals(STARTED_STATUS))
+                  && d.artifact.name.equals(applicationMetadata.getName())
+                  && !d.target.name.equals(applicationMetadata.getTarget())) {
+            String msg = String.format("Application %s is not allowed to be deployed to %s because it´s already running on %s. " +
+                            "Please stop or delete the application on %s or change deploy target back to %s.",
+                    applicationMetadata.getName(), applicationMetadata.getTarget(), d.target.name, d.target.name, d.target.name);
+            log.error(msg);
+            throw new DeploymentException(msg);
+          }
+        }
+      }
+    }
+    log.info("Validate application state: OK");
+  }
+
+  protected void enableAnalyticsAndTracking(ApplicationMetadata applicationMetadata, Application app) {
     if (applicationMetadata.isEnableAnalytics() || applicationMetadata.isEnableTracking()) {
       String targetId = app.data.target.id;
       Components components = getComponents(targetId);
+      // TODO: add support later to disable tracking agent
       if (applicationMetadata.isEnableAnalytics()) {
-        Component component = findComponent(components, "mule.agent.tracking.handler.analytics");
+        Component component = findComponent(components, MULE_AGENT_TRACKING_HANDLER_ANALYTICS);
+        log.debug("Analytics component(before): " + toJson(component));
         if (component != null) {
           EnableAnalytics ea = new EnableAnalytics();
-          ea.enable = true;
+          ea.enabled = true;
+		  log.debug("Enable Analytics request: " + toJson(ea));
           Response response = patch(baseUri, TARGETS + "/" + targetId + "/" + COMPONENTS + "/" + component.component.id, ea);
-          log.info("Enable Analytics response: " + response.getStatus());
+          log.debug(String.format("Enable Analytics response: %s(%s) - %s", response.getStatusInfo(), response.getStatus(), response.readEntity(String.class)));
+          checkResponseStatus(response);
+          log.info("ARM analytics enabled!");
         }
+		else {
+          String errorMsg = "Analytics component could not be found!";
+          log.error(errorMsg);
+          throw new ClientException(errorMsg, -1, "");
+		}
       }
+      // TODO: add support later to remove tracking for specific app
       if (applicationMetadata.isEnableTracking()) {
-        Component component = findComponent(components, "mule.agent.tracking.service");
-        if (component != null) {
+        Component component = findComponent(components, MULE_AGENT_TRACKING_SERVICE);
+        if (component != null) { 
+          log.debug("Tracking component(before): " + toJson(component));
           String appName = app.data.artifact.name;
           Map<String,Object> config = component.configuration;
-          List<Map<String, String>> trackedApplications = null;
-          if (config != null) {
+          List<Map<String, String>> trackedApplications;
+          if (config == null) {
+            config = new HashMap<>();
+          }
+          if (config.containsKey(TRACKED_APPLICATIONS)) {
             trackedApplications = (List<Map<String, String>>) config.get(TRACKED_APPLICATIONS);
           }
           else {
-            config = new HashMap<String,Object>();
-            trackedApplications = new ArrayList<Map<String, String>>();
+            trackedApplications = new ArrayList<>();
             config.put(TRACKED_APPLICATIONS, trackedApplications);
           }
           
           boolean found = false;
           for (Map<String, String> trackedApp : trackedApplications) {
-            if (appName.equals(trackedApp.get("appName"))) {
+            if (appName.equals(trackedApp.get("appName"))) { 
+			  log.debug("Tracking component - app settings already exists, using " + toJson(trackedApp));
               found = true;
               break;
             }
@@ -162,13 +186,23 @@ public class ArmClient extends AbstractMuleClient {
             trackedApp.put("trackingLevel", "DEBUG");
             trackedApp.put("appName", appName);
             trackedApplications.add(trackedApp);
+            log.debug("Tracking component - app settings not found, create new config " + toJson(trackedApp));
           }
           EnableTracking et = new EnableTracking();
           et.enabled = true;
           et.configuration = config;
-          Response response = patch(baseUri, TARGETS + "/" + targetId + "/" + COMPONENTS +"/" + component.component.id, et);
-          log.info("Enable Tracking response: " + response.getStatus());
+          String json = toJson(et);
+          log.debug("Enable Tracking request: " + json);
+          Response response = patch(baseUri, TARGETS + "/" + targetId + "/" + COMPONENTS +"/" + component.component.id, json);
+          log.debug(String.format("Enable Tracking response: %s(%s) - %s", response.getStatusInfo(), response.getStatus(), response.readEntity(String.class)));
+          checkResponseStatus(response);
+          log.info("ARM tracking enabled!");
         }
+        else {
+          String errorMsg = "Tracking component could not be found!";
+          log.error(errorMsg);
+          throw new ClientException(errorMsg, -1, "");
+		}
       }
     }    
   }
@@ -283,7 +317,8 @@ public class ArmClient extends AbstractMuleClient {
   }
   
   public Components getComponents(String targetId) {
-    Components components = get(baseUri, TARGETS + "/" + targetId + "/" + COMPONENTS, Components.class);
+    String resJson = get(baseUri, TARGETS + "/" + targetId + "/" + COMPONENTS, String.class);
+    Components components = fromJson(resJson, Components.class);
     return components;
   }
   
@@ -296,7 +331,7 @@ public class ArmClient extends AbstractMuleClient {
     }
     return null;
   }
-
+  
   protected void configureSecurityContext(ClientBuilder builder) {
     if (armInsecure) {
       try {
