@@ -121,7 +121,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-plugin-plugin</artifactId>
             </plugin>
-            <plugin>
+<!--            <plugin>
                 <groupId>com.mycila</groupId>
                 <artifactId>license-maven-plugin</artifactId>
             </plugin>
@@ -129,7 +129,7 @@
                 <groupId>com.marvinformatics.formatter</groupId>
                 <artifactId>formatter-maven-plugin</artifactId>
             </plugin>
-        </plugins>
+    -->    </plugins>
     </build>
 
     <reporting>
